@@ -62,9 +62,13 @@ def metkom():
     table = soup.find(class_='table catalog-table__table')
     alltr = table.findAll('tr')
     category = ''
+    category_id = int()
     for tr in alltr[1:]:
         if tr.has_attr('class'):
             title = tr.text.strip()
+            if title == '':
+
+                pass
             #TODO перевод категории в id
         else:
             block = tr.findAll('td')
