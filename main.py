@@ -49,10 +49,15 @@ async def gather_data():
         await asyncio.gather(*tasks)
 
 
+
 def main():
-    asyncio.run(gather_data())
-    cur_time = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M")
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(gather_data())
+    loop.run_until_complete(asyncio.sleep(0.250))
+    loop.close()
+
     metkom()
+
     finish_time = time.time() - start_time
     logging.info(f"Затраченное на работу скрипта время: {finish_time}")
 
@@ -61,21 +66,46 @@ def metkom():
     soup = data['METKOM']
     table = soup.find(class_='table catalog-table__table')
     alltr = table.findAll('tr')
-    category = ''
     category_id = int()
+    start_time = time.time()
     for tr in alltr[1:]:
         if tr.has_attr('class'):
             title = tr.text.strip()
-            if title == '':
-
-                pass
-            #TODO перевод категории в id
+            if title == 'Прием лома меди':
+                category_id = 1
+            elif title == 'Прием лома латуни':
+                category_id = 4
+            elif title == 'Бронза':
+                category_id = 3
+            elif title == 'Прием лома алюминия':
+                category_id = 2
+            elif title == 'Прием лома цинка':
+                category_id = 15
+            elif title == 'Прием лома магния':
+                category_id = 20
+            elif title == 'Нержавеющая сталь':
+                category_id =  9
+            elif title == 'Прием лома титана':
+                category_id = 21
+            elif title == 'Лом черных металлов':
+                category_id = 22
+            elif title == 'Прием лома никеля':
+                category_id = 8
         else:
             block = tr.findAll('td')
             name = block[0].text.strip()
-            price = block[1].text.strip()
-            print([name, price, category])
-
+            price = block[1].text.replace('руб', '').strip()
+            try:
+                price = int(price)
+            except:
+                price = 0
+            if db.metall_exists(name):
+                db.update_metall(category_id, name, 3, 1, price)
+            else:
+                db.create_metall(category_id, name, price, '', 3, 1, '')
+            print([name, price,  category_id])
+    finish_time = time.time() - start_time
+    print(finish_time)
 
 if __name__ == "__main__":
     main()

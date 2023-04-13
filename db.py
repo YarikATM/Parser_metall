@@ -18,7 +18,15 @@ class Database:
         except Exception as e:
             logging.error(f'Database connection error: {str(e)}')
 
-
-
-
-
+    def metall_exists(self, name):
+        self.cursor.execute('SELECT name FROM Metall WHERE name = %s', name)
+        res = self.cursor.fetchall()
+        return bool(len(res))
+    def create_metall(self, category, name, price, desc, company, city, img):
+        sql = 'INSERT INTO Metall (category, name, price, `desc`, company, city, img) VALUES (%s, %s, %s, %s, %s, %s, %s)'
+        self.cursor.execute(sql, (category, name, price, desc, company, city, img))
+        self.connection.commit()
+    def update_metall(self, category, name, company, city, price):
+        sql = 'UPDATE Metall SET price = %s WHERE category = %s AND name = %s AND company = %s AND city = %s'
+        self.cursor.execute(sql, (price, category, name, company, city))
+        self.connection.commit()
