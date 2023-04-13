@@ -5,19 +5,14 @@ from bs4 import BeautifulSoup
 import aiohttp
 import logging
 from db import Database
-from config import DB_NAME, DB_HOST, DB_USER, DB_PASSWORD
+from config import DB_NAME, DB_HOST, DB_USER, DB_PASSWORD, urls, headers, cookies
 
 logging.basicConfig(level=logging.INFO, filename="metall.log", filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
 
-db = Database(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+loop = asyncio.new_event_loop()
 
-urls = {
-    'METKOM': "https://krasnoyarsk.metkom-group.ru/",
-    'VTORCHERMET': "https://siblom24.ru/tseny-tsvetnogo-loma",
-    'CSLK': "http://cslk24.ru/",
-    'VTORMET': 'https://втормет24.рф/ceni/tsvetnoj-lom-po-zonam.html'
-}
+db = Database(loop)
 
 data = dict()
 
@@ -26,8 +21,9 @@ start_time = time.time()
 
 async def get_page_data(session, name):
     url = urls[name]
-
-    async with session.get(url=url, ) as response:
+    header = headers[name]
+    cookie = cookies[name]
+    async with session.get(url=url, headers=header, cookies=cookie) as response:
         if response.status != 200:
             logging.error(url, response.status)
         else:
@@ -49,20 +45,16 @@ async def gather_data():
         await asyncio.gather(*tasks)
 
 
-
-def main():
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(gather_data())
-    loop.run_until_complete(asyncio.sleep(0.250))
-    loop.close()
-
-    metkom()
+async def main():
+    await gather_data()
+    await db.connect(host=DB_HOST, port=3306, user=DB_USER, password=DB_PASSWORD, db=DB_NAME)
+    await metkom()
 
     finish_time = time.time() - start_time
     logging.info(f"Затраченное на работу скрипта время: {finish_time}")
 
 
-def metkom():
+async def metkom():
     soup = data['METKOM']
     table = soup.find(class_='table catalog-table__table')
     alltr = table.findAll('tr')
@@ -84,7 +76,7 @@ def metkom():
             elif title == 'Прием лома магния':
                 category_id = 20
             elif title == 'Нержавеющая сталь':
-                category_id =  9
+                category_id = 9
             elif title == 'Прием лома титана':
                 category_id = 21
             elif title == 'Лом черных металлов':
@@ -99,13 +91,14 @@ def metkom():
                 price = int(price)
             except:
                 price = 0
-            if db.metall_exists(name):
-                db.update_metall(category_id, name, 3, 1, price)
+            if await db.metal_exist(name):
+                await db.update_metal(category_id, name, 3, 1, price)
             else:
-                db.create_metall(category_id, name, price, '', 3, 1, '')
-            print([name, price,  category_id])
+                await db.create_metal(category_id, name, price, '', 3, 1, '')
     finish_time = time.time() - start_time
     print(finish_time)
 
+
+
 if __name__ == "__main__":
-    main()
+    loop.run_until_complete(main())
