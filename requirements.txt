@@ -1,0 +1,5 @@
+aiohttp~=3.8.4
+bs4
+lxml
+pymysql
+python-dotenv
