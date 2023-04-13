@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import time
 from bs4 import BeautifulSoup
 import aiohttp
@@ -7,7 +6,7 @@ import logging
 from db import Database
 from config import DB_NAME, DB_HOST, DB_USER, DB_PASSWORD, urls, headers, cookies
 
-logging.basicConfig(level=logging.INFO, filename="metall.log", filemode="w",
+logging.basicConfig(level=logging.DEBUG, filename="metall.log", filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
 
 loop = asyncio.new_event_loop()
@@ -48,8 +47,8 @@ async def gather_data():
 async def main():
     await gather_data()
     await db.connect(host=DB_HOST, port=3306, user=DB_USER, password=DB_PASSWORD, db=DB_NAME)
-    await metkom()
-
+    # await metkom()
+    await vtorchermet()
     finish_time = time.time() - start_time
     logging.info(f"Затраченное на работу скрипта время: {finish_time}")
 
@@ -58,8 +57,10 @@ async def metkom():
     soup = data['METKOM']
     table = soup.find(class_='table catalog-table__table')
     alltr = table.findAll('tr')
+
     category_id = int()
     start_time = time.time()
+
     for tr in alltr[1:]:
         if tr.has_attr('class'):
             title = tr.text.strip()
@@ -88,15 +89,85 @@ async def metkom():
             name = block[0].text.strip()
             price = block[1].text.replace('руб', '').strip()
             try:
-                price = int(price)
+                int(price)
             except:
-                price = 0
+                price = 'По запросу'
             if await db.metal_exist(name):
                 await db.update_metal(category_id, name, 3, 1, price)
             else:
                 await db.create_metal(category_id, name, price, '', 3, 1, '')
+
     finish_time = time.time() - start_time
     print(finish_time)
+
+
+async def vtorchermet():
+    soup = data['VTORCHERMET']
+    table = soup.find(class_='editorElement layer-type-block ui-droppable block-28').find('article').find('table') \
+        .find('tbody')
+    alltr = table.findAll('tr')
+
+
+    for tr in alltr[1:]:
+        tds = tr.findAll('td')
+        name = tds[0].text.strip()
+        price = tds[1].text.strip()
+        try:
+            int(price)
+        except:
+            price = 'По запросу'
+        if 'МЕДЬ' in name:
+            category_id = 1
+        elif 'Бронзы' in name:
+            category_id = 3
+        elif 'Лат' in name:
+            category_id = 4
+        elif 'Нихром' in name:
+            category_id = 19
+        elif 'Титана' in name:
+            category_id = 21
+        else:
+            category_id = 19
+        if await db.metal_exist(name):
+            await db.update_metal(category_id, name, 4, 1, price)
+        else:
+            await db.create_metal(category_id, name, price, '', 4, 1, '')
+
+    category_id = 2
+    for tr in alltr[1:]:
+        tds = tr.findAll('td')
+        name = tds[2].text.strip()
+        price = tds[3].text.strip()
+        try:
+            int(price)
+        except:
+            price = 'По запросу'
+        if await db.metal_exist(name):
+            await db.update_metal(category_id, name, 4, 1, price)
+        else:
+            await db.create_metal(category_id, name, price, '', 4, 1, '')
+
+    for tr in alltr[1:]:
+        tds = tr.findAll('td')
+        name = tds[4].text
+        try:
+            price = int(tds[5].text)
+        except:
+            price = 0
+        if 'Банки алюм' in name:
+            category_id = 2
+        elif 'Нерж' in name:
+            category_id = 9
+        elif 'ЦАМ авто' in name:
+            category_id = 15
+        elif 'Свинец' in name:
+            category_id = 6
+        elif 'АКБ' in name:
+            category_id = 5
+        if await db.metal_exist(name):
+            await db.update_metal(category_id, name, 4, 1, price)
+        else:
+            await db.create_metal(category_id, name, price, '', 4, 1, '')
 
 
 
