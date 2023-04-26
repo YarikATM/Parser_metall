@@ -30,9 +30,9 @@ class Database:
         result = await self.cursor.execute('SELECT name FROM Metall WHERE name = %s', name)
         return bool(result)
 
-    async def update_metal(self, category, name, company, city, price):
-        sql = 'UPDATE Metall SET price = %s WHERE category = %s AND name = %s AND company = %s AND city = %s'
-        await self.cursor.execute(sql, (price, category, name, company, city))
+    async def update_metal(self, name, company, price):
+        sql = 'UPDATE Metall SET price = %s WHERE name = %s AND company = %s'
+        await self.cursor.execute(sql, (price, name, company))
         await self.conn.commit()
 
     async def create_metal(self, category, name, price, desc, company, city, img):
